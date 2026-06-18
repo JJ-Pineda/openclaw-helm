@@ -298,11 +298,15 @@ jobs:
       - name: Push Charts to GHCR
         if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
         run: |
-          for pkg in .cr-release-packages/*.tgz; do
-            if [ -z "${pkg:-}" ]; then
-              break
-            fi
-            helm push "${pkg}" oci://ghcr.io/${{ github.repository }}
+          shopt -s nullglob
+          packages=(.cr-release-packages/*.tgz)
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "No chart packages found to push to GHCR"
+            exit 0
+          fi
+          oci_repository="$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')"
+          for pkg in "${packages[@]}"; do
+            helm push "${pkg}" "oci://ghcr.io/${oci_repository}"
           done
 
       - name: Dry run summary
